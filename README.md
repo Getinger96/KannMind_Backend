@@ -1,4 +1,4 @@
-# 🗂️ Django KannMind_Backend Backend
+# 🗂️ Django KannMind_Backend 
 
 Dies ist das Backend eines Kanban-Board-Projekts, entwickelt mit dem [Django](https://www.djangoproject.com/) Web-Framework. Es stellt eine RESTful API zur Verfügung, mit der Boards, Listen und Karten verwaltet werden können.
 
