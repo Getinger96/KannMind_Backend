@@ -1,181 +1,228 @@
-# Importiert die APIView-Basisklasse für eigene Views
 from rest_framework.views import APIView
-
-# Importiert die Modelle aus der Kanban-App
 from kanban_app.models import Board, Task, Comment
-
-# Importiert die zugehörigen Serializer
 from kanban_app.api.serializer import BoardSerializer, TaskSerializer, SimpleUserSerializer, CommentSerializer
-
-# Für HTTP-Antworten wie Response(data, status)
 from rest_framework.response import Response
-
-# Importiert HTTP-Statuscodes (z. B. 200 OK, 403 FORBIDDEN)
-from rest_framework import status
-
-# Generische Views für CRUD-Operationen
-from rest_framework import viewsets
-from rest_framework import generics
-
-# Berechtigungsklassen von DRF
+from rest_framework import status, viewsets, generics
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly, AllowAny
-
-# Django-Modelle (nicht direkt verwendet hier)
 from django.db import models
-
-# Das eingebaute User-Modell
 from django.contrib.auth.models import User
-
-# Für benutzerdefinierte Fehler
 from rest_framework.exceptions import PermissionDenied, NotFound
 
 
-# View zum Anzeigen & Erstellen von Boards
 class BoardsView(generics.ListCreateAPIView):
-    # Queryset: Alle Boards
+    """
+    API view to list all boards or create a new one.
+
+    GET: Returns a list of all boards.
+    POST: Creates a new board with the authenticated user as the owner.
+    """
     queryset = Board.objects.all()
-    # Serializer für Darstellung & Validierung
     serializer_class = BoardSerializer
-    # Nur eingeloggte Nutzer dürfen POST machen
     permission_classes = [IsAuthenticatedOrReadOnly]
 
-    # Setzt den aktuellen Nutzer als Besitzer beim Erstellen
     def perform_create(self, serializer):
+        """
+        Sets the authenticated user as the board owner during creation.
+        """
         serializer.save(owner=self.request.user)
 
 
-# View für einzelne Boards (GET, PUT, DELETE)
 class BoardDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    API view to retrieve, update, or delete a specific board.
+
+    Only authenticated users can access this view.
+    """
     queryset = Board.objects.all()
     serializer_class = BoardSerializer
     permission_classes = [IsAuthenticated]
 
-    # (Optional – in dieser View eher nicht notwendig)
     def perform_create(self, serializer):
+        """
+        (Optional) Ensures the authenticated user is set as owner.
+        This may not be called unless overridden specifically.
+        """
         serializer.save(owner=self.request.user)
 
 
-# View zum Bearbeiten und Löschen einzelner Tasks
 class TaskDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    API view to retrieve, update, or delete a specific task.
+
+    Only authenticated users can perform these actions.
+    Update and delete permissions depend on board membership and ownership.
+    """
     queryset = Task.objects.all()
     serializer_class = TaskSerializer
     permission_classes = [IsAuthenticated]
 
-    # Nur Mitglieder des Boards dürfen Tasks bearbeiten
     def perform_update(self, serializer):
+        """
+        Ensures the user is a board member before allowing task updates.
+
+        Raises:
+            PermissionDenied: If user is not a board member.
+        """
         task = self.get_object()
         user = self.request.user
 
-        # Prüft ob User im Board ist
         if not task.board.members.filter(id=user.id).exists():
-            raise PermissionDenied("Du musst Mitglied des Boards sein, um diese Aufgabe zu bearbeiten.")
+            raise PermissionDenied("You must be a board member to edit this task.")
 
         serializer.save()
 
-    # Nur Ersteller oder Board-Owner dürfen löschen
     def perform_destroy(self, instance):
+        """
+        Ensures only the task creator or board owner can delete the task.
+
+        Raises:
+            PermissionDenied: If the user is not authorized.
+        """
         user = self.request.user
 
-        # Berechtigungsprüfung für Löschen
         if instance.owner != user and instance.board.owner != user:
-            raise PermissionDenied("Nur der Ersteller oder der Eigentümer des Boards darf diese Aufgabe löschen.")
+            raise PermissionDenied("Only the creator or board owner can delete this task.")
 
         instance.delete()
 
 
-# View zum Anzeigen und Erstellen von Aufgaben
 class TasksView(generics.ListCreateAPIView):
+    """
+    API view to list all tasks or create a new task.
+
+    Only authenticated users are allowed.
+    """
     queryset = Task.objects.all()
     serializer_class = TaskSerializer
     permission_classes = [IsAuthenticated]
 
 
-# View zur Rückgabe der aktuell eingeloggten User-Daten
 class EmailCheckView(APIView):
+    """
+    API view to return basic user info (for email check, profile display, etc.).
+
+    GET: Returns authenticated user's basic information.
+    """
     permission_classes = [IsAuthenticated]
 
-    # Gibt aktuelle User-Daten (z. B. für Profil oder Auth-Check)
     def get(self, request):
+        """
+        Returns user data using the SimpleUserSerializer.
+        """
         user = request.user
         serializer = SimpleUserSerializer(user)
         return Response(serializer.data)
 
 
-# View für alle Aufgaben, bei denen der User als "assignee" eingetragen ist
 class TasksAssignedToMeView(generics.ListAPIView):
+    """
+    API view to list all tasks assigned to the authenticated user.
+    """
     serializer_class = TaskSerializer
     permission_classes = [IsAuthenticated]
 
-    # Gibt nur Aufgaben zurück, die dem aktuellen User zugewiesen sind
     def get_queryset(self):
+        """
+        Filters tasks where the user is listed as an assignee.
+        """
         user = self.request.user
         return Task.objects.filter(assignees=user)
 
 
-# View für Aufgaben, bei denen der User Reviewer ist
 class Tasksreviewing(generics.ListAPIView):
+    """
+    API view to list all tasks the user is assigned to review.
+    """
     serializer_class = TaskSerializer
     permission_classes = [IsAuthenticated]
 
-    # Gibt alle Tasks zurück, bei denen der Nutzer Reviewer ist
     def get_queryset(self):
+        """
+        Filters tasks where the user is listed as a reviewer.
+        """
         user = self.request.user
         return Task.objects.filter(reviewers=user)
 
 
-# View zum Auflisten und Erstellen von Kommentaren zu einem Task
 class TaskCommentListView(generics.ListCreateAPIView):
+    """
+    API view to list or add comments to a specific task.
+
+    The user must be a member of the board to view or comment.
+    """
     serializer_class = CommentSerializer
     permission_classes = [IsAuthenticated]
 
-    # Holt den Task, prüft ob der User Mitglied im Board ist
     def get_task(self):
+        """
+        Retrieves the task based on the URL parameter `pk`.
+
+        Raises:
+            NotFound: If task doesn't exist.
+            PermissionDenied: If user is not a board member.
+
+        Returns:
+            Task: The task instance.
+        """
         task_id = self.kwargs.get('pk')
         try:
             task = Task.objects.get(id=task_id)
         except Task.DoesNotExist:
-            raise NotFound("Task nicht gefunden.")
+            raise NotFound("Task not found.")
 
-        # Zugriff nur für Mitglieder des Boards
         if self.request.user not in task.board.members.all():
-            raise PermissionDenied("Du bist kein Mitglied dieses Boards.")
+            raise PermissionDenied("You are not a member of this board.")
+
         return task
 
-    # Holt alle Kommentare zu einem Task, sortiert nach Erstellungszeit
     def get_queryset(self):
+        """
+        Returns the queryset of comments for the given task.
+        """
         task = self.get_task()
         return task.comments.all().order_by("created_at")
 
-    # Erstellt neuen Kommentar zum Task
     def perform_create(self, serializer):
+        """
+        Creates a new comment on the task with the current user as the author.
+        """
         task = self.get_task()
-        print("DEBUG USER:", self.request.user, self.request.user.is_authenticated)
         serializer.save(task=task, author=self.request.user)
 
 
-# View zum Löschen eines Kommentars innerhalb eines Tasks
 class TaskCommentDeleteView(generics.DestroyAPIView):
+    """
+    API view to delete a comment on a task.
+
+    Only the comment author can delete their own comment.
+    """
     permission_classes = [IsAuthenticated]
 
-    # Holt den Kommentar und prüft Berechtigung
     def get_object(self):
-        task_id = self.kwargs.get('task_id')  # In URL als task_id übergeben
-        comment_id = self.kwargs.get('comment_id')  # In URL als comment_id übergeben
+        """
+        Retrieves the comment instance based on task and comment IDs in the URL.
 
-        # Holt den Task
+        Raises:
+            NotFound: If task or comment is not found.
+            PermissionDenied: If the user is not the comment's author.
+
+        Returns:
+            Comment: The comment instance to delete.
+        """
+        task_id = self.kwargs.get('task_id')  
+        comment_id = self.kwargs.get('comment_id')  
+
         try:
             task = Task.objects.get(id=task_id)
         except Task.DoesNotExist:
-            raise NotFound("Task nicht gefunden.")
+            raise NotFound("Task not found.")
 
-        # Holt den Kommentar zum Task
         try:
             comment = Comment.objects.get(id=comment_id, task=task)
         except Comment.DoesNotExist:
-            raise NotFound("Kommentar nicht gefunden.")
+            raise NotFound("Comment not found.")
 
-        # Nur Autor darf löschen
         if comment.author != self.request.user:
-            raise PermissionDenied("Nur der Ersteller darf diesen Kommentar löschen.")
+            raise PermissionDenied("Only the author can delete this comment.")
 
         return comment

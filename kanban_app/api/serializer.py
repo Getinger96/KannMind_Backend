@@ -1,146 +1,188 @@
-# Importiert das Serialisierungsmodul von Django REST Framework
 from rest_framework import serializers
-
-# Importiert die Modelle aus der Kanban-App
 from kanban_app.models import Board, Task, Comment
-
-# Importiert das eingebaute User-Modell von Django
 from django.contrib.auth.models import User
-
-# Hilfsfunktion zum sicheren Abrufen eines Objekts (gibt 404 zurück, wenn nicht gefunden)
 from django.shortcuts import get_object_or_404
 
 
-# Serializer zur Darstellung eines einfachen Users (z. B. für Aufgaben oder Kommentare)
 class SimpleUserSerializer(serializers.ModelSerializer):
+    """
+    A simplified serializer for the User model.
+
+    Includes only basic identifying fields: ID, username, and email.
+    Useful for nested representation in related objects.
+    """
     class Meta:
-        model = User  # Nutzt das eingebaute User-Modell
-        fields = ['id', 'username', 'email']  # Gibt nur ausgewählte Felder aus
+        model = User  
+        fields = ['id', 'username', 'email'] 
 
 
-# Serializer für Boards (Kanban-Boards)
 class BoardSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the Board model.
 
-    # Ermöglicht das Setzen von Mitgliedern über deren IDs beim Erstellen/Ändern (write_only)
+    Includes custom fields for:
+    - member_ids: IDs of assigned members (write-only)
+    - member_count: total number of members
+    - ticket_count: total number of tasks in the board
+    - high_priority_count: tasks marked with high priority
+    - tasks_to_do_count: tasks with status "to_do"
+    """
+
     member_ids = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.all(),
         many=True,
         write_only=True,
-        source='members'  # Mapped auf das tatsächliche Feld im Modell: `members`
+        source='members'  
     )
 
-    # Zusätzliche Felder, die automatisch berechnet werden (read-only)
-    member_count = serializers.SerializerMethodField()         # Anzahl Mitglieder
-    ticket_count = serializers.SerializerMethodField()         # Anzahl Aufgaben
-    high_priority_count = serializers.SerializerMethodField()  # Anzahl Aufgaben mit hoher Priorität
-    tasks_to_do_count = serializers.SerializerMethodField()    # Anzahl Aufgaben im Status "to_do"
+    member_count = serializers.SerializerMethodField()
+    ticket_count = serializers.SerializerMethodField()
+    high_priority_count = serializers.SerializerMethodField()
+    tasks_to_do_count = serializers.SerializerMethodField()
 
     class Meta:
-        model = Board  # Verwendetes Modell
+        model = Board
         fields = [
             'id', 'title', 'member_count', 'member_ids',
             'ticket_count', 'high_priority_count',
             'tasks_to_do_count', 'owner_id'
         ]
-        read_only_fields = ['owner']  # Das Owner-Feld kann nicht über die API verändert werden
+        read_only_fields = ['owner']
 
-    # Gibt Anzahl der Mitglieder zurück
     def get_member_count(self, obj):
+        """
+        Returns the number of members assigned to the board.
+        """
         return obj.members.count()
 
-    # Gibt Anzahl der Aufgaben zurück
     def get_ticket_count(self, obj):
+        """
+        Returns the total number of tasks associated with the board.
+        """
         return obj.task_set.count()
 
-    # Gibt Anzahl der Aufgaben mit Priorität "H" (High) zurück
     def get_high_priority_count(self, obj):
+        """
+        Returns the number of tasks on the board with high priority.
+        """
         return obj.task_set.filter(priority='H').count()
 
-    # Gibt Anzahl der offenen Aufgaben zurück (Status = "to_do")
     def get_tasks_to_do_count(self, obj):
+        """
+        Returns the number of tasks on the board with status 'to_do'.
+        """
         return obj.task_set.filter(status='to_do').count()
 
 
-# Serializer für Aufgaben (Tasks)
 class TaskSerializer(serializers.ModelSerializer):
-    # Board-ID (nur lesbar)
-    board = serializers.PrimaryKeyRelatedField(read_only=True)
+    """
+    Serializer for the Task model.
 
-    # Zum Setzen der Board-ID beim Erstellen (write_only)
+    Includes:
+    - board_ids: write-only field to assign board
+    - assignee_ids / reviewer_ids: write-only fields for assigning users
+    - assignees / reviewers: read-only nested user representations
+    """
+
+    board = serializers.PrimaryKeyRelatedField(read_only=True)
     board_ids = serializers.PrimaryKeyRelatedField(
         queryset=Board.objects.all(),
         many=False,
         write_only=True,
-        source='board'  # schreibt ins Feld `board`
+        source='board'
     )
 
-    # Assignees und Reviewer werden als eingebettete Benutzer dargestellt (read-only)
     assignees = SimpleUserSerializer(many=True, read_only=True)
     reviewers = SimpleUserSerializer(many=True, read_only=True)
 
-    # Zum Setzen von Assignee-IDs (write-only)
     assignee_ids = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.all(),
         many=True,
         write_only=True,
-        source='assignees'  # schreibt ins Feld `assignees`
+        source='assignees'
     )
 
-    # Zum Setzen von Reviewer-IDs (optional, write-only)
     reviewer_ids = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.all(),
         many=True,
         write_only=True,
         required=False,
-        source='reviewers'  # schreibt ins Feld `reviewers`
+        source='reviewers'
     )
 
     class Meta:
-        model = Task  # Modell, das serialisiert wird
-        exclude = []  # Keine Felder ausschließen (alles wird serialisiert)
+        model = Task  
+        exclude = []  # Includes all fields from the model
 
-    # Erstellen einer neuen Aufgabe mit Assignees und Reviewern
     def create(self, validated_data):
-        assignees = validated_data.pop('assignees', [])  # Entnimmt Assignees aus den Daten
-        reviewers = validated_data.pop('reviewers', [])  # Entnimmt Reviewer aus den Daten
+        """
+        Creates a new Task instance with assigned assignees and reviewers.
 
-        task = Task.objects.create(**validated_data)  # Erstellt die Aufgabe
-        task.assignees.set(assignees)  # Setzt die Assignees
-        task.reviewers.set(reviewers)  # Setzt die Reviewer
+        Args:
+            validated_data (dict): Validated input data.
+
+        Returns:
+            Task: The newly created Task instance.
+        """
+        assignees = validated_data.pop('assignees', [])
+        reviewers = validated_data.pop('reviewers', [])
+
+        task = Task.objects.create(**validated_data)
+        task.assignees.set(assignees)
+        task.reviewers.set(reviewers)
 
         return task
 
-    # Aktualisiert eine bestehende Aufgabe (inkl. Assignees & Reviewer)
     def update(self, instance, validated_data):
-        assignees = validated_data.pop('assignees', None)  # Optional: neue Assignees
-        reviewers = validated_data.pop('reviewers', None)  # Optional: neue Reviewer
+        """
+        Updates an existing Task instance and reassigns assignees/reviewers if provided.
 
-        # Setzt alle anderen Felder
+        Args:
+            instance (Task): The task instance to update.
+            validated_data (dict): Validated input data.
+
+        Returns:
+            Task: The updated Task instance.
+        """
+        assignees = validated_data.pop('assignees', None)
+        reviewers = validated_data.pop('reviewers', None)
+
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
 
-        # Setzt neue Assignees, falls angegeben
         if assignees is not None:
             instance.assignees.set(assignees)
 
-        # Setzt neue Reviewer, falls angegeben
         if reviewers is not None:
             instance.reviewers.set(reviewers)
 
         return instance
 
 
-# Serializer für Kommentare
 class CommentSerializer(serializers.ModelSerializer):
-    # Gibt den Autor als vollständigen Namen oder Username zurück
+    """
+    Serializer for the Comment model.
+
+    Includes a custom author field that returns the user's full name,
+    or their username if full name is not set.
+    """
+
     author = serializers.SerializerMethodField()
 
     class Meta:
-        model = Comment  # Kommentarmodell
-        fields = ['id', 'created_at', 'author', 'content']  # Felder, die serialisiert werden
+        model = Comment 
+        fields = ['id', 'created_at', 'author', 'content']
 
-    # Ermittelt, wie der Autorname dargestellt wird
     def get_author(self, obj):
-        name = obj.author.get_full_name()  # Versucht, den vollständigen Namen zu bekommen
-        return name if name else obj.author.username  # Fallback: Benutzername
+        """
+        Returns the full name of the comment's author if available, otherwise the username.
+
+        Args:
+            obj (Comment): The comment instance.
+
+        Returns:
+            str: Full name or username of the author.
+        """
+        name = obj.author.get_full_name()
+        return name if name else obj.author.username
