@@ -8,31 +8,43 @@ class UserProfileSerializer(serializers.ModelSerializer):
         fields = ['user', 'bio', 'location']
 
 class RegistrationSerializer(serializers.ModelSerializer):
-
+    fullname = serializers.CharField(write_only=True)
     repeated_password = serializers.CharField(write_only=True)
 
     class Meta:
-        model= User
-        fields = ['username','email','password','repeated_password']
+        model = User
+        fields = ['fullname', 'email', 'password', 'repeated_password']
         extra_kwargs = {
-            'password': {
-                'write_only':True
-            }
+            'password': {'write_only': True},
         }
-    
-    def validate_email(self, value):
-     if User.objects.filter(email=value).exists():
-      raise serializers.ValidationError('Email already exists')
-     return value
-    
-    def save(self, **kwargs):
-        pw= self.validated_data['password']
-        repeated_pw= self.validated_data['repeated_password']
 
-        if pw != repeated_pw:
-            raise serializers.ValidationError({'error':'passwords dont match'})
-        
-        account = User(email=self.validated_data['email'],username=self.validated_data['username'])
-        account.set_password(pw)
-        account.save()
-        return account
+    def validate_email(self, value):
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError('Email already exists')
+        return value
+
+    def validate(self, data):
+        if data['password'] != data['repeated_password']:
+            raise serializers.ValidationError({'error': 'Passwords do not match'})
+        return data
+
+    def create(self, validated_data):
+        fullname = validated_data.pop('fullname')
+        repeated_pw = validated_data.pop('repeated_password')
+        email = validated_data['email']
+        password = validated_data['password']
+
+        # Optional: split fullname
+        name_parts = fullname.strip().split(" ", 1)
+        first_name = name_parts[0]
+        last_name = name_parts[1] if len(name_parts) > 1 else ""
+
+        user = User(
+            username=fullname,  # falls du Username trotzdem brauchst
+            email=email,
+            first_name=first_name,
+            last_name=last_name
+        )
+        user.set_password(password)
+        user.save()
+        return user
