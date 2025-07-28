@@ -21,45 +21,6 @@ Dies ist das Backend eines Kanban-Board-Projekts, entwickelt mit dem [Django](ht
 - SQLite / PostgreSQL (je nach Konfiguration)
 - (Optional) JWT / Token Auth mit `djangorestframework-simplejwt`
 
-## 🛠️ Installation & Setup
-
-1. Projekt klonen:
-
-```bash
-git clone https://github.com/Getinger96/KannMind_Backend
-cd kanban-backend
-Virtuelle Umgebung erstellen:
-
-bash
-Kopieren
-Bearbeiten
-python -m venv venv
-source venv/bin/activate  # auf Windows: venv\Scripts\activate
-Abhängigkeiten installieren:
-
-bash
-Kopieren
-Bearbeiten
-pip install -r requirements.txt
-Migrationen anwenden:
-
-bash
-Kopieren
-Bearbeiten
-python manage.py migrate
-Admin-Benutzer erstellen (optional):
-
-bash
-Kopieren
-Bearbeiten
-python manage.py createsuperuser
-Server starten:
-
-bash
-Kopieren
-Bearbeiten
-python manage.py runserver
-🔗 Standardmäßig läuft das Backend auf: http://127.0.0.1:8000/
 
 
 
