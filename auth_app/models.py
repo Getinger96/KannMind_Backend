@@ -10,9 +10,9 @@ class UserProfile(models.Model):
     and adds extra fields such as bio and location.
     """
 
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-    bio = models.TextField(blank=True, null=True)
-    location = models.CharField(max_length=100, blank=True, null=True)
+    username = models.OneToOneField(User, on_delete=models.CASCADE)
+    email = models.TextField(blank=True, null=True)
+    password = models.CharField(max_length=100, blank=True, null=True)
 
     def __str__(self):
         """
@@ -21,4 +21,4 @@ class UserProfile(models.Model):
         Returns:
             str: The username of the associated User instance.
         """
-        return self.user.username
+        return self.user.name

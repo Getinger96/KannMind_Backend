@@ -1,6 +1,6 @@
 from rest_framework import generics
 from auth_app.models import UserProfile
-from .serializers import UserProfileSerializer, RegistrationSerializer
+from .serializers import UserProfileSerializer, RegistrationSerializer,CustomAuthTokenSerializer
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
 from rest_framework.authtoken.models import Token
@@ -40,6 +40,7 @@ class CustomLoginView(ObtainAuthToken):
         If valid, returns an auth token, username, email, and user ID.
     """
     permission_classes = [AllowAny]
+    serializer_class = CustomAuthTokenSerializer
 
     def post(self, request):
         """
