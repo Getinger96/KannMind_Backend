@@ -15,145 +15,130 @@ from .permissions import IsBoardMemberOrOwner,IsBoardMember,IsTaskCreatorOrBoard
 
 
 
-class BoardsView(APIView):
+class  BoardsView(APIView):
+    """
+    API-View für das Listen und Erstellen von Boards.
+    GET: Gibt alle Boards zurück, bei denen der User Mitglied oder Owner ist.
+    POST: Erstellt ein neues Board, wobei der angemeldete User als Owner gesetzt wird.
+    """
     permission_classes = [IsAuthenticated]
+
     def get(self, request, format=None):
-        # Filter Boards, bei denen user Owner oder Member ist
+        # Filtert Boards, bei denen der User Owner oder Mitglied ist
         boards = Board.objects.filter(members=request.user) | Board.objects.filter(owner=request.user)
         boards = boards.distinct()
         serializer = BoardSerializer(boards, many=True)
         return Response(serializer.data)
 
     def post(self, request, format=None):
-       serializer = BoardCreateSerializer(data=request.data)
-        
-       if serializer.is_valid():
-            board=serializer.save(owner=request.user)
-            Response_serializer=BoardSerializer(board)
-            return Response(Response_serializer.data, status=status.HTTP_201_CREATED)
-       else:
-            return Response(serializer.errors,status=status.HTTP_400_BAD_REQUEST)
-
+        serializer = BoardCreateSerializer(data=request.data)
+        if serializer.is_valid():
+            board = serializer.save(owner=request.user)
+            response_serializer = BoardSerializer(board)
+            return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class BoardsDetailView(generics.GenericAPIView):
+    """
+    API-View für Details, Aktualisierung (PATCH) und Löschung eines Boards.
+    Zugriffsrechte: Nur Board Owner oder Mitglieder.
+    """
     queryset = Board.objects.all()
-    serializer_class = BoardDetailSerializer  # Zum Aktualisieren
+    serializer_class = BoardDetailSerializer
     permission_classes = [IsAuthenticated, IsBoardMemberOrOwner]
 
-    
-
     def get_object(self):
-        board = super().get_object()  # oder alternativ: self.queryset.get(pk=self.kwargs['pk'])
-        self.check_object_permissions(self.request, board)  # <- wichtig für IsBoardMemberOrOwner
+        board = super().get_object()
+        self.check_object_permissions(self.request, board)
         return board
-    
+
     def get(self, request, *args, **kwargs):
-     board = self.get_object()
-     serializer = BoardDetailSerializer(board)
-     return Response(serializer.data)
+        board = self.get_object()
+        serializer = BoardDetailSerializer(board)
+        return Response(serializer.data)
 
     def patch(self, request, *args, **kwargs):
-     board = self.get_object()
+        board = self.get_object()
+        input_serializer = BoardSerializer(board, data=request.data, partial=True)
+        if input_serializer.is_valid():
+            input_serializer.save()
+            board.refresh_from_db()
+            response_serializer = BoardUpdateSerializer(board)
+            return Response(response_serializer.data)
+        return Response(input_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    # 1. Schreiben mit BoardSerializer (enthält members als write_only)
-     input_serializer = BoardSerializer(board, data=request.data, partial=True)
-    
-     if input_serializer.is_valid():
-        input_serializer.save()  # persistiert Änderungen
-
-        # 2. Neuladen aus DB für aktualisierte Daten (optional, aber sicherer)
-        board.refresh_from_db()
-
-        # 3. Antwort mit dem ausführlichen Output-Serializer
-        response_serializer = BoardUpdateSerializer(board)
-        return Response(response_serializer.data)
-
-     return Response(input_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
     def delete(self, request, *args, **kwargs):
         board = self.get_object()
         board.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-    
-
 class EmailCheckView(APIView):
-    permission_classes = [IsAuthenticated]  # Benutzer muss eingeloggt sein
+    """
+    API-View zur Überprüfung, ob eine gegebene E-Mail-Adresse
+    existiert und gültig ist.
+    Nur authentifizierte Nutzer können diese View verwenden.
+    """
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         email = request.query_params.get('email')
         if not email:
-            return Response(
-                {'error': 'E-Mail-Adresse ist erforderlich.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        # E-Mail-Format validieren
+            return Response({'error': 'E-Mail-Adresse ist erforderlich.'}, status=status.HTTP_400_BAD_REQUEST)
+
         validator = EmailValidator()
         try:
             validator(email)
         except ValidationError:
-            return Response(
-                {'error': 'Ungültiges E-Mail-Format.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
+            return Response({'error': 'Ungültiges E-Mail-Format.'}, status=status.HTTP_400_BAD_REQUEST)
+
         try:
             user = User.objects.get(email=email)
         except User.DoesNotExist:
-            return Response(
-                {'detail': 'E-Mail nicht gefunden.'},
-                status=status.HTTP_404_NOT_FOUND
-            )
+            return Response({'detail': 'E-Mail nicht gefunden.'}, status=status.HTTP_404_NOT_FOUND)
         except Exception:
-            # Für alle anderen Fehler (Datenbank etc.)
-            return Response(
-                {'error': 'Interner Serverfehler.'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-        
-        fullname = f"{user.first_name} {user.last_name}".strip()
+            return Response({'error': 'Interner Serverfehler.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        return Response(
-            {
-                "id": user.id,
-                "email": user.email,
-                "fullname": fullname,
-            },
-            status=status.HTTP_200_OK
-        )
-    
+        fullname = f"{user.first_name} {user.last_name}".strip()
+        return Response({"id": user.id, "email": user.email, "fullname": fullname}, status=status.HTTP_200_OK)
+
 
 class TaskView(APIView):
+    """
+    API-View zum Erstellen von Tasks.
+    Zugriffsberechtigung: Nur Mitglieder des zugehörigen Boards.
+    """
     permission_classes = [IsAuthenticated, IsBoardMember]
+
     def post(self, request, format=None):
-       serializer =TaskCreateSerializer(data=request.data)
-       
-        
-       if serializer.is_valid():
-            task=serializer.save()
-            Response_serializer=TaskSerializer(task)
-            return Response(Response_serializer.data, status=status.HTTP_201_CREATED)
-       else:
-            return Response(serializer.errors,status=status.HTTP_400_BAD_REQUEST)
-
-
+        serializer = TaskCreateSerializer(data=request.data)
+        if serializer.is_valid():
+            task = serializer.save()
+            response_serializer = TaskSerializer(task)
+            return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class TasksDetailView(generics.GenericAPIView):
+    """
+    API-View für Details, Aktualisierung (PATCH) und Löschung von Tasks.
+    Zugriffsberechtigung:
+      - Authentifiziert
+      - Mitglied des zugehörigen Boards
+      - Nur Task-Ersteller oder Board-Eigentümer können Änderungen vornehmen
+    """
     queryset = Task.objects.all()
-    serializer_class = TaskCreateSerializer  # Zum Aktualisieren
-    permission_classes = [IsAuthenticated, IsBoardMember,IsTaskCreatorOrBoardOwner] 
-
-    
+    serializer_class = TaskCreateSerializer
+    permission_classes = [IsAuthenticated, IsBoardMember, IsTaskCreatorOrBoardOwner]
 
     def get_object(self):
         task = generics.get_object_or_404(Task, pk=self.kwargs['pk'])
-        self.check_object_permissions(self.request, task.board)  # ✅ Permission prüfen für das zugehörige Board
+        self.check_object_permissions(self.request, task.board)
         return task
-    
+
     def get(self, request, *args, **kwargs):
         task = self.get_object()
         serializer = TaskDetailSerializer(task)
@@ -163,38 +148,24 @@ class TasksDetailView(generics.GenericAPIView):
         task = self.get_object()
         data = request.data.copy()
 
-        # ✅ Verhindere Änderung der board-ID
         if "board" in data and data["board"] != str(task.board.id):
-            return Response(
-                {"error": "Das Board einer Task kann nicht geändert werden."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"error": "Das Board einer Task kann nicht geändert werden."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # ✅ Überprüfen: assignee/reviewer müssen Mitglieder des Boards sein
         board_members = list(task.board.members.all()) + [task.board.owner]
         assignee_id = data.get("assignee_id")
         reviewer_id = data.get("reviewer_id")
 
         if assignee_id and not any(user.id == int(assignee_id) for user in board_members):
-            return Response(
-                {"error": "Assignee muss Mitglied des Boards sein."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"error": "Assignee muss Mitglied des Boards sein."}, status=status.HTTP_400_BAD_REQUEST)
 
         if reviewer_id and not any(user.id == int(reviewer_id) for user in board_members):
-            return Response(
-                {"error": "Reviewer muss Mitglied des Boards sein."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"error": "Reviewer muss Mitglied des Boards sein."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # ✅ Serialisieren und speichern
         serializer = TaskCreateSerializer(task, data=data, partial=True)
-
         if serializer.is_valid():
             task = serializer.save()
             response_serializer = TaskDetailSerializer(task)
             return Response(response_serializer.data)
-
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, *args, **kwargs):
@@ -202,22 +173,20 @@ class TasksDetailView(generics.GenericAPIView):
         task.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-    def delete(self, request, *args, **kwargs):
-        task = self.get_object()
-        task.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-
 
 class TaskCommentsListCreateView(generics.GenericAPIView):
+    """
+    API-View zum Listen und Erstellen von Kommentaren zu einer Task.
+    Zugriffsberechtigung: Nur Board-Mitglieder der jeweiligen Task.
+    """
     permission_classes = [IsAuthenticated, IsBoardMemberForTask]
     serializer_class = CommentResponseSerializer
-    queryset = Comment.objects.all() 
-    
+    queryset = Comment.objects.all()
+
     def get_task(self, pk):
-     task = generics.get_object_or_404(Task, pk=pk)
-     self.check_object_permissions(self.request, task)
-     return task
+        task = generics.get_object_or_404(Task, pk=pk)
+        self.check_object_permissions(self.request, task)
+        return task
 
     def get(self, request, pk):
         task = self.get_task(pk)
@@ -226,7 +195,6 @@ class TaskCommentsListCreateView(generics.GenericAPIView):
         return Response(serializer.data)
 
     def post(self, request, pk):
-        print("request.data:", request.data)
         task = self.get_task(pk)
         serializer = CommentCreateSerializer(data=request.data)
         if serializer.is_valid():
@@ -237,6 +205,10 @@ class TaskCommentsListCreateView(generics.GenericAPIView):
 
 
 class TaskCommentDeleteView(generics.DestroyAPIView):
+    """
+    API-View zum Löschen eines Kommentars.
+    Nur der Autor des Kommentars darf diesen löschen.
+    """
     queryset = Comment.objects.all()
     permission_classes = [IsAuthenticated, IsCommentAuthor]
 
@@ -248,19 +220,23 @@ class TaskCommentDeleteView(generics.DestroyAPIView):
         return comment
 
 
-
 class TasksAssignedToMeView(APIView):
-     permission_classes = [IsAuthenticated]
+    """
+    API-View zum Abrufen aller Tasks, die dem aktuellen Nutzer zugewiesen sind.
+    """
+    permission_classes = [IsAuthenticated]
 
-     def get(self, request):
+    def get(self, request):
         user = request.user
         tasks = Task.objects.filter(assignees=user)
         serializer = TaskSerializer(tasks, many=True)
         return Response(serializer.data)
-     
 
 
 class TasksReviewingView(APIView):
+    """
+    API-View zum Abrufen aller Tasks, die der aktuelle Nutzer als Reviewer hat.
+    """
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
