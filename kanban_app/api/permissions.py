@@ -3,11 +3,10 @@ from kanban_app.models import Board,Task
 
 
 
-
 class IsBoardMemberOrOwner(BasePermission):
     """
-    Erlaubt Zugriff, wenn der Benutzer entweder Eigentümer des Objekts
-    oder Mitglied des zugehörigen Boards ist.
+    Allows access if the user is either the owner of the object
+    or a member of the associated board.
     """
     def has_object_permission(self, request, view, obj):
         return request.user == obj.owner or request.user in obj.members.all()
@@ -15,16 +14,16 @@ class IsBoardMemberOrOwner(BasePermission):
 
 class IsBoardMember(BasePermission):
     """
-    Kombinierte Permission für den Zugriff auf Boards.
-    Prüft sowohl generelle Zugriffsrechte (POST-Anfragen mit Board-Angabe)
-    als auch objektbezogene Rechte auf Board-Objekten.
+    Combined permission for accessing boards.
+    Checks both general access rights (e.g., POST requests with board specified)
+    and object-level permissions on board objects.
     """
 
     def has_permission(self, request, view):
         """
-        Prüft, ob der Benutzer Zugriff auf das angegebene Board hat,
-        basierend auf 'board' in den Request-Daten oder Query-Parametern.
-        Falls kein Board angegeben ist, wird der Zugriff nicht eingeschränkt.
+        Checks if the user has access to the specified board,
+        based on 'board' in the request data or query parameters.
+        If no board is specified, access is not restricted.
         """
         board_id = request.data.get('board') or request.query_params.get('board')
         if not board_id:
@@ -39,9 +38,9 @@ class IsBoardMember(BasePermission):
 
     def has_object_permission(self, request, view, obj):
         """
-        Prüft den Zugriff auf ein Board-Objekt.
-        Falls das Objekt ein untergeordnetes Objekt mit 'board' ist,
-        wird das Board ermittelt und die Mitgliedschaft/Eigentümerschaft geprüft.
+        Checks access to a board object.
+        If the object is a child object with a 'board' attribute,
+        the board is determined and membership/ownership checked.
         """
         board = obj.board if hasattr(obj, "board") else obj
         return request.user == board.owner or request.user in board.members.all()
@@ -49,8 +48,8 @@ class IsBoardMember(BasePermission):
 
 class IsTaskCreatorOrBoardOwner(BasePermission):
     """
-    Erlaubt Aktionen (z.B. Löschen) nur dem Ersteller der Task
-    oder dem Eigentümer des zugehörigen Boards.
+    Allows actions (e.g., deletion) only to the creator of the task
+    or the owner of the associated board.
     """
 
     def has_object_permission(self, request, view, obj):
@@ -60,7 +59,7 @@ class IsTaskCreatorOrBoardOwner(BasePermission):
 
 class IsBoardMemberForTask(BasePermission):
     """
-    Erlaubt Zugriff nur für Mitglieder des Boards, das mit einer Task oder einem Comment verknüpft ist.
+    Allows access only to members of the board linked to a task or comment.
     """
 
     def has_object_permission(self, request, view, obj):
@@ -78,7 +77,7 @@ class IsBoardMemberForTask(BasePermission):
 
 class IsCommentAuthor(BasePermission):
     """
-    Erlaubt Aktionen nur dem Autor des Comments.
+    Allows actions only to the author of the comment.
     """
 
     def has_object_permission(self, request, view, obj):

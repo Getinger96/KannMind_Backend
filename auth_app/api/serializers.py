@@ -5,9 +5,9 @@ from django.contrib.auth import authenticate
 
 class UserSerializer(serializers.ModelSerializer):
     """
-    Serializer zur Darstellung von User-Objekten mit einer
-    zusätzlichen berechneten Eigenschaft 'fullname', die
-    Vor- und Nachname kombiniert zurückgibt.
+    Serializer for representing User objects with an
+    additional computed property 'fullname' that
+    returns the combination of first and last name.
     """
     fullname = serializers.SerializerMethodField()
 
@@ -17,9 +17,9 @@ class UserSerializer(serializers.ModelSerializer):
 
     def get_fullname(self, obj):
         """
-        Gibt den vollständigen Namen zurück, falls vorhanden.
-        Falls Vor- und Nachname leer sind, wird der
-        Benutzername oder die E-Mail verwendet.
+        Returns the full name if available.
+        If first and last names are empty, returns
+        the username or email instead.
         """
         full = f"{obj.first_name} {obj.last_name}".strip()
         return full if full else obj.username or obj.email
@@ -27,9 +27,9 @@ class UserSerializer(serializers.ModelSerializer):
 
 class RegistrationSerializer(serializers.ModelSerializer):
     """
-    Serializer zur Registrierung neuer Nutzer mit Validierung
-    von E-Mail und Passwort, inklusive doppelter Passwortabfrage
-    und Aufteilung des übergebenen 'fullname' in Vor- und Nachname.
+    Serializer for registering new users with validation
+    of email and password, including double password entry
+    and splitting the provided 'fullname' into first and last names.
     """
     fullname = serializers.CharField(write_only=True)
     repeated_password = serializers.CharField(write_only=True)
@@ -41,7 +41,7 @@ class RegistrationSerializer(serializers.ModelSerializer):
 
     def validate_email(self, value):
         """
-        Validiert, dass die E-Mail noch nicht vergeben ist.
+        Validates that the email is not already taken.
         """
         if User.objects.filter(email=value).exists():
             raise serializers.ValidationError('Email already exists')
@@ -49,7 +49,7 @@ class RegistrationSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         """
-        Validiert, dass Passwort und wiederholtes Passwort übereinstimmen.
+        Validates that password and repeated password match.
         """
         if data['password'] != data['repeated_password']:
             raise serializers.ValidationError({'error': 'Passwords do not match'})
@@ -57,8 +57,8 @@ class RegistrationSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         """
-        Erstellt einen neuen User, indem der fullname in Vor- und Nachname
-        zerlegt wird und das Passwort gehasht gespeichert wird.
+        Creates a new User by splitting fullname into
+        first and last names and hashing the password.
         """
         fullname = validated_data.pop('fullname')
         validated_data.pop('repeated_password')
@@ -80,16 +80,16 @@ class RegistrationSerializer(serializers.ModelSerializer):
 
 class CustomAuthTokenSerializer(serializers.Serializer):
     """
-    Serializer für die Authentifizierung via E-Mail und Passwort.
-    Validiert die Credentials und gibt bei Erfolg den User zurück.
+    Serializer for authentication via email and password.
+    Validates credentials and returns the user on success.
     """
     email = serializers.EmailField()
     password = serializers.CharField()
 
     def validate(self, data):
         """
-        Prüft, ob ein User mit der angegebenen E-Mail existiert und
-        ob das Passwort korrekt ist.
+        Checks if a user with the given email exists and
+        if the password is correct.
         """
         user = User.objects.filter(email=data['email']).first()
         if not user:

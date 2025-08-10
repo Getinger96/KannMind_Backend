@@ -15,16 +15,15 @@ from .permissions import IsBoardMemberOrOwner,IsBoardMember,IsTaskCreatorOrBoard
 
 
 
-class  BoardsView(APIView):
+class BoardsView(APIView):
     """
-    API-View für das Listen und Erstellen von Boards.
-    GET: Gibt alle Boards zurück, bei denen der User Mitglied oder Owner ist.
-    POST: Erstellt ein neues Board, wobei der angemeldete User als Owner gesetzt wird.
+    API view for listing and creating boards.
+    GET: Returns all boards where the user is a member or owner.
+    POST: Creates a new board with the logged-in user as the owner.
     """
     permission_classes = [IsAuthenticated]
 
     def get(self, request, format=None):
-        # Filtert Boards, bei denen der User Owner oder Mitglied ist
         boards = Board.objects.filter(members=request.user) | Board.objects.filter(owner=request.user)
         boards = boards.distinct()
         serializer = BoardSerializer(boards, many=True)
@@ -42,8 +41,8 @@ class  BoardsView(APIView):
 
 class BoardsDetailView(generics.GenericAPIView):
     """
-    API-View für Details, Aktualisierung (PATCH) und Löschung eines Boards.
-    Zugriffsrechte: Nur Board Owner oder Mitglieder.
+    API view for retrieving details, updating (PATCH), and deleting a board.
+    Access rights: Only board owners or members.
     """
     queryset = Board.objects.all()
     serializer_class = BoardDetailSerializer
@@ -77,29 +76,28 @@ class BoardsDetailView(generics.GenericAPIView):
 
 class EmailCheckView(APIView):
     """
-    API-View zur Überprüfung, ob eine gegebene E-Mail-Adresse
-    existiert und gültig ist.
-    Nur authentifizierte Nutzer können diese View verwenden.
+    API view to check if a given email address exists and is valid.
+    Only authenticated users can use this view.
     """
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         email = request.query_params.get('email')
         if not email:
-            return Response({'error': 'E-Mail-Adresse ist erforderlich.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'Email address is required.'}, status=status.HTTP_400_BAD_REQUEST)
 
         validator = EmailValidator()
         try:
             validator(email)
         except ValidationError:
-            return Response({'error': 'Ungültiges E-Mail-Format.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'Invalid email format.'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             user = User.objects.get(email=email)
         except User.DoesNotExist:
-            return Response({'detail': 'E-Mail nicht gefunden.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': 'Email not found.'}, status=status.HTTP_404_NOT_FOUND)
         except Exception:
-            return Response({'error': 'Interner Serverfehler.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({'error': 'Internal server error.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         fullname = f"{user.first_name} {user.last_name}".strip()
         return Response({"id": user.id, "email": user.email, "fullname": fullname}, status=status.HTTP_200_OK)
@@ -107,8 +105,8 @@ class EmailCheckView(APIView):
 
 class TaskView(APIView):
     """
-    API-View zum Erstellen von Tasks.
-    Zugriffsberechtigung: Nur Mitglieder des zugehörigen Boards.
+    API view for creating tasks.
+    Access permission: Only members of the related board.
     """
     permission_classes = [IsAuthenticated, IsBoardMember]
 
@@ -124,11 +122,11 @@ class TaskView(APIView):
 
 class TasksDetailView(generics.GenericAPIView):
     """
-    API-View für Details, Aktualisierung (PATCH) und Löschung von Tasks.
-    Zugriffsberechtigung:
-      - Authentifiziert
-      - Mitglied des zugehörigen Boards
-      - Nur Task-Ersteller oder Board-Eigentümer können Änderungen vornehmen
+    API view for retrieving details, updating (PATCH), and deleting tasks.
+    Access permissions:
+      - Authenticated users
+      - Members of the related board
+      - Only task creators or board owners can make changes
     """
     queryset = Task.objects.all()
     serializer_class = TaskCreateSerializer
@@ -149,17 +147,17 @@ class TasksDetailView(generics.GenericAPIView):
         data = request.data.copy()
 
         if "board" in data and data["board"] != str(task.board.id):
-            return Response({"error": "Das Board einer Task kann nicht geändert werden."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "The board of a task cannot be changed."}, status=status.HTTP_400_BAD_REQUEST)
 
         board_members = list(task.board.members.all()) + [task.board.owner]
         assignee_id = data.get("assignee_id")
         reviewer_id = data.get("reviewer_id")
 
         if assignee_id and not any(user.id == int(assignee_id) for user in board_members):
-            return Response({"error": "Assignee muss Mitglied des Boards sein."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "Assignee must be a member of the board."}, status=status.HTTP_400_BAD_REQUEST)
 
         if reviewer_id and not any(user.id == int(reviewer_id) for user in board_members):
-            return Response({"error": "Reviewer muss Mitglied des Boards sein."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "Reviewer must be a member of the board."}, status=status.HTTP_400_BAD_REQUEST)
 
         serializer = TaskCreateSerializer(task, data=data, partial=True)
         if serializer.is_valid():
@@ -176,8 +174,8 @@ class TasksDetailView(generics.GenericAPIView):
 
 class TaskCommentsListCreateView(generics.GenericAPIView):
     """
-    API-View zum Listen und Erstellen von Kommentaren zu einer Task.
-    Zugriffsberechtigung: Nur Board-Mitglieder der jeweiligen Task.
+    API view for listing and creating comments on a task.
+    Access permission: Only board members of the respective task.
     """
     permission_classes = [IsAuthenticated, IsBoardMemberForTask]
     serializer_class = CommentResponseSerializer
@@ -206,8 +204,8 @@ class TaskCommentsListCreateView(generics.GenericAPIView):
 
 class TaskCommentDeleteView(generics.DestroyAPIView):
     """
-    API-View zum Löschen eines Kommentars.
-    Nur der Autor des Kommentars darf diesen löschen.
+    API view for deleting a comment.
+    Only the author of the comment is allowed to delete it.
     """
     queryset = Comment.objects.all()
     permission_classes = [IsAuthenticated, IsCommentAuthor]
@@ -215,14 +213,14 @@ class TaskCommentDeleteView(generics.DestroyAPIView):
     def get_object(self):
         comment = generics.get_object_or_404(Comment, pk=self.kwargs['comment_pk'])
         if comment.task_id != int(self.kwargs['pk']):
-            raise Http404("Kommentar gehört nicht zur angegebenen Task.")
+            raise Http404("Comment does not belong to the specified task.")
         self.check_object_permissions(self.request, comment)
         return comment
 
 
 class TasksAssignedToMeView(APIView):
     """
-    API-View zum Abrufen aller Tasks, die dem aktuellen Nutzer zugewiesen sind.
+    API view to retrieve all tasks assigned to the current user.
     """
     permission_classes = [IsAuthenticated]
 
@@ -235,7 +233,7 @@ class TasksAssignedToMeView(APIView):
 
 class TasksReviewingView(APIView):
     """
-    API-View zum Abrufen aller Tasks, die der aktuelle Nutzer als Reviewer hat.
+    API view to retrieve all tasks where the current user is a reviewer.
     """
     permission_classes = [IsAuthenticated]
 

@@ -8,20 +8,20 @@ from rest_framework import status
 
 class CustomLoginView(ObtainAuthToken):
     """
-    View zur Authentifizierung von Nutzern via E-Mail und Passwort.
-    Verwendet den CustomAuthTokenSerializer zur Validierung der Credentials.
-    Gibt bei erfolgreicher Anmeldung ein Auth-Token sowie
-    Nutzerinformationen (vollständiger Name, E-Mail, User-ID) zurück.
+    View for authenticating users via email and password.
+    Uses CustomAuthTokenSerializer to validate credentials.
+    On successful login, returns an auth token along with
+    user information (full name, email, user ID).
     """
     permission_classes = [AllowAny]
     serializer_class = CustomAuthTokenSerializer
 
     def post(self, request):
         """
-        Verarbeitet POST-Anfragen mit den Login-Daten.
-        Validiert die Daten, erstellt (oder holt) ein Token für den User
-        und gibt dieses zusammen mit Nutzerinformationen zurück.
-        Bei ungültigen Daten wird ein Fehlerstatus mit Fehlermeldungen gesendet.
+        Handles POST requests with login data.
+        Validates the data, creates (or retrieves) a token for the user,
+        and returns it along with user info.
+        Returns an error status with messages if data is invalid.
         """
         serializer = self.serializer_class(data=request.data)
         if serializer.is_valid():
@@ -39,20 +39,20 @@ class CustomLoginView(ObtainAuthToken):
 
 class RegistrationView(APIView):
     """
-    View zur Registrierung neuer Nutzer.
-    Nimmt die Nutzerdaten entgegen, validiert diese und legt
-    bei Erfolg einen neuen User an.
-    Gibt anschließend ein Auth-Token und Nutzerinformationen zurück.
+    View for registering new users.
+    Accepts user data, validates it, and creates
+    a new user upon success.
+    Returns an auth token and user info afterwards.
     """
     permission_classes = [AllowAny]
 
     def post(self, request):
         """
-        Verarbeitet POST-Anfragen mit Registrierungsdaten.
-        Validiert und speichert den neuen Nutzer.
-        Erstellt (oder holt) ein Token für den neuen User und gibt
-        dieses mit Nutzerinformationen zurück.
-        Bei Fehlern in den Daten wird ein Fehlerstatus mit Details gesendet.
+        Handles POST requests with registration data.
+        Validates and saves the new user.
+        Creates (or retrieves) a token for the new user and returns
+        it along with user information.
+        Returns an error status with details if data is invalid.
         """
         serializer = RegistrationSerializer(data=request.data)
         if serializer.is_valid():
