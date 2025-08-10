@@ -14,6 +14,7 @@ class Board(models.Model):
     title = models.CharField(max_length=30)
     members = models.ManyToManyField(User, related_name='member_boards')
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='boards')
+    
 
     def __str__(self):
         return self.title
@@ -45,18 +46,18 @@ class Task(models.Model):
         "to_do": "TO_DO",
         "progress": "IN_PROGRESS",
         "review": "IN_REVIEW",
-        "finished": "FINISHED",
+        "done": "DONE",
     }
 
     title = models.CharField(max_length=30)
     description = models.TextField(max_length=500, blank=True)
-    board = models.ForeignKey(Board, on_delete=models.CASCADE)
+    board = models.ForeignKey(Board, on_delete=models.CASCADE,related_name='tasks')
     priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES.items())
     status = models.CharField(max_length=30, choices=STATUS_CHOICES.items())
     due_date = models.DateField()
-    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name="created_tasks")
     assignees = models.ManyToManyField(User, related_name='assigned_tasks')
     reviewers = models.ManyToManyField(User, related_name='reviewed_tasks')
+    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='owned_tasks',null=True, blank=True,)
 
     def __str__(self):
         return self.title
