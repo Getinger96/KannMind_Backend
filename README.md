@@ -21,16 +21,6 @@
 - ⚙️ Admin panel available at `/admin/`
 
 ---
-
-## 🖼️ Preview (Optional)
-
-> *(You can replace this with screenshots or a diagram showing API structure or database schema)*
-
-![Preview](https://via.placeholder.com/800x400.png?text=API+Structure+Preview)
-<!-- Replace this with an actual image from your project -->
-
----
-
 ## ⚙️ Tech Stack
 
 - 🐍 Python 3.x
@@ -49,43 +39,30 @@
 git clone https://github.com/Getinger96/KannMind_Backend.git
 cd KannMind_Backend
 2️⃣ Create and activate a virtual environment
-bash
-Kopieren
-Bearbeiten
+
 python3 -m venv env
 source env/bin/activate        # On Windows: env\Scripts\activate
 3️⃣ Install dependencies
-bash
-Kopieren
-Bearbeiten
+
 pip install -r requirements.txt
 4️⃣ Configure environment variables
 Create a .env file in the project root:
 
-ini
-Kopieren
-Bearbeiten
 DJANGO_SECRET_KEY=your_secret_key_here
 DEBUG=True
 DATABASE_URL=sqlite:///db.sqlite3   # Or use your PostgreSQL URL
 ⚠️ Make sure your settings.py reads from the environment variables (e.g. using os.environ or python-decouple).
 
 5️⃣ Apply database migrations
-bash
-Kopieren
-Bearbeiten
+
 python manage.py migrate
 6️⃣ Create a superuser
-bash
-Kopieren
-Bearbeiten
+
 python manage.py createsuperuser
 Follow the prompts to create an admin account.
 
 7️⃣ Run the development server
-bash
-Kopieren
-Bearbeiten
+
 python manage.py runserver
 👉 API available at: http://127.0.0.1:8000/
 👉 Admin panel at: http://127.0.0.1:8000/admin/
@@ -116,9 +93,6 @@ POST	/api/auth/login/	Log in a user
 Full endpoint details are defined in your urls.py or browsable via Django REST Framework interface.
 
 📂 Project Structure (Quick Overview)
-txt
-Kopieren
-Bearbeiten
 KannMind_Backend/
 ├── kannmind/           # Core app
 │   ├── models.py       # Data models
@@ -137,22 +111,8 @@ MIT License © Getinger96
 
 📬 Contact
 For questions or collaboration:
-📧 [your.email@example.com] (optional)
-📘 [LinkedIn profile] (optional)
-
-yaml
-Kopieren
-Bearbeiten
-
----
-
-Let me know if you’d like to:
-- Add Swagger / ReDoc documentation
-- Include actual screenshots or diagrams
-- Automatically deploy to a service like **Render**, **Railway**, or **Heroku**
-
-I can help with that too.
+📘 https://www.linkedin.com/in/erich-getinger-45536a255/
 
 
 
-ChatGPT fragen
+
