@@ -89,14 +89,14 @@ class TasksofBoardSerializer(serializers.ModelSerializer):
     for assignees and reviewers.
     """
     comments_count = serializers.SerializerMethodField()
-    assignees = SimplifiedUserSerializer(many=True, read_only=True)
-    reviewers = SimplifiedUserSerializer(many=True, read_only=True)
+    assignee = SimplifiedUserSerializer( read_only=True)
+    reviewer = SimplifiedUserSerializer( read_only=True)
 
     class Meta:
         model = Task
         fields = [
             'id', 'title', 'description', 'status', 'priority',
-            'assignees', 'reviewers', 'due_date', 'comments_count'
+            'assignee', 'reviewer', 'due_date', 'comments_count'
         ]
 
     def get_comments_count(self, obj):
@@ -147,7 +147,7 @@ class TaskCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Task
-        exclude = ['assignees', 'reviewers']
+        exclude = ['assignee', 'reviewer']
 
     def create(self, validated_data):
         """
@@ -156,9 +156,10 @@ class TaskCreateSerializer(serializers.ModelSerializer):
         assignee = validated_data.pop('assignee_id')
         reviewer = validated_data.pop('reviewer_id')
 
-        task = Task.objects.create(**validated_data)
-        task.assignees.add(assignee)
-        task.reviewers.add(reviewer)
+        task = Task.objects.create(**validated_data,
+                                   assignee=assignee,
+                                   reviewer=reviewer)
+       
         return task
 
     def update(self, instance, validated_data):
@@ -174,9 +175,9 @@ class TaskCreateSerializer(serializers.ModelSerializer):
         instance.save()
 
         if assignee is not None:
-            instance.assignees.set([assignee])
+            instance.assignee.set([assignee])
         if reviewer is not None:
-            instance.reviewers.set([reviewer])
+            instance.reviewer.set([reviewer])
 
         return instance
 
@@ -188,14 +189,14 @@ class TaskSerializer(serializers.ModelSerializer):
     """
     board = serializers.PrimaryKeyRelatedField(queryset=Board.objects.all())
     comments_count = serializers.SerializerMethodField()
-    assignees = UserSerializer(many=True, read_only=True)
-    reviewers = UserSerializer(many=True, read_only=True)
+    assignee = UserSerializer(read_only=True)
+    reviewer = UserSerializer( read_only=True)
 
     class Meta:
         model = Task
         fields = [
             'id', 'board', 'title', 'description', 'status', 'priority',
-            'assignees', 'reviewers', 'due_date', 'comments_count'
+            'assignee', 'reviewer', 'due_date', 'comments_count'
         ]
 
     def get_comments_count(self, obj):
@@ -208,14 +209,14 @@ class TaskDetailSerializer(serializers.ModelSerializer):
     Detailed serializer for a single task
     with assignees and reviewers as nested user data.
     """
-    assignees = UserSerializer(many=True, read_only=True)
-    reviewers = UserSerializer(many=True, read_only=True)
+    assignee = UserSerializer(read_only=True)
+    reviewer = UserSerializer(read_only=True)
 
     class Meta:
         model = Task
         fields = [
             'id', 'title', 'description', 'status', 'priority',
-            'assignees', 'reviewers', 'due_date'
+            'assignee', 'reviewer', 'due_date'
         ]
 
 

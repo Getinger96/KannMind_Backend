@@ -55,8 +55,8 @@ class Task(models.Model):
     priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES.items())
     status = models.CharField(max_length=30, choices=STATUS_CHOICES.items())
     due_date = models.DateField()
-    assignees = models.ManyToManyField(User, related_name='assigned_tasks')
-    reviewers = models.ManyToManyField(User, related_name='reviewed_tasks')
+    assignee = models.ForeignKey(User,on_delete=models.CASCADE, related_name='assigned_tasks')
+    reviewer = models.ForeignKey(User,on_delete=models.CASCADE, related_name='reviewed_tasks')
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='owned_tasks',null=True, blank=True,)
 
     def __str__(self):

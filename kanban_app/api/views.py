@@ -108,7 +108,7 @@ class TaskView(APIView):
     API view for creating tasks.
     Access permission: Only members of the related board.
     """
-    permission_classes = [IsAuthenticated, IsBoardMember]
+   
 
     def post(self, request, format=None):
         serializer = TaskCreateSerializer(data=request.data)
@@ -118,6 +118,8 @@ class TaskView(APIView):
             return Response(response_serializer.data, status=status.HTTP_201_CREATED)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+    permission_classes = [IsAuthenticated, IsBoardMember]
 
 
 class TasksDetailView(generics.GenericAPIView):
@@ -226,7 +228,7 @@ class TasksAssignedToMeView(APIView):
 
     def get(self, request):
         user = request.user
-        tasks = Task.objects.filter(assignees=user)
+        tasks = Task.objects.filter(assignee=user)
         serializer = TaskSerializer(tasks, many=True)
         return Response(serializer.data)
 
@@ -239,6 +241,6 @@ class TasksReviewingView(APIView):
 
     def get(self, request):
         user = request.user
-        tasks = Task.objects.filter(reviewers=user)
+        tasks = Task.objects.filter(reviewer=user)
         serializer = TaskSerializer(tasks, many=True)
         return Response(serializer.data)
