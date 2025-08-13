@@ -60,18 +60,7 @@ pip install -r requirements.txt
 
 ---
 
-
-### 4️⃣ Configure environment variables
-
-```env
-DJANGO_SECRET_KEY=your_secret_key_here
-DEBUG=True
-DATABASE_URL=sqlite:///db.sqlite3   # Oder deine PostgreSQL URL
-```
-
----
-
-### 5️⃣ Apply database migrations
+### 4️⃣ Apply database migrations
 
 ```bash
 python manage.py migrate
@@ -79,7 +68,8 @@ python manage.py migrate
 
 ---
 
-### 6️⃣ Create a superuser
+
+### 5️⃣ Create a superuser
 
 ```bash
 python manage.py createsuperuser
@@ -87,16 +77,7 @@ python manage.py createsuperuser
 
 ---
 
-
-### 6️⃣ Create a superuser
-
-```bash
-python manage.py createsuperuser
-```
-
----
-
-### 7️⃣ Run the development server
+### 6️⃣ Run the development server
 
 ```bash
 python manage.py runserver
@@ -111,8 +92,8 @@ python manage.py runserver
 The API supports managing:
 
 - 🧩 Boards  
-- 🗂️ Cards (Tasks)  
-- 💬 Comments (if implemented)  
+- 🗂️ Tasks   
+- 💬 Comments   
 - 👤 User authentication: Register & Login  
 
 Use tools like Postman, Insomnia, or your frontend app to test and interact with the API.
@@ -121,13 +102,33 @@ Use tools like Postman, Insomnia, or your frontend app to test and interact with
 
 ## 🧪 Sample Endpoints
 
-| Method | Endpoint              | Description              |
-|--------|-----------------------|--------------------------|
-| GET    | `/api/boards/`        | Retrieve all boards      |
-| POST   | `/api/boards/`        | Create a new board       |
-| GET    | `/api/lists/<board_id>/` | Get lists for a board   |
-| POST   | `/api/cards/`         | Create a new card/task   |
-| POST   | `/api/auth/login/`    | Log in a user            |
+| Method | Endpoint                                | Description                            |
+|--------|-----------------------------------------|----------------------------------------|
+| POST   | `/api/registration/`                    | Register a new user                    |
+| POST   | `/api/login/`                           | Log in a user                          |
+| GET    | `/api/email-check/`                     | Check if an email is already in use    |
+
+### Boards
+| Method | Endpoint                                | Description                            |
+|--------|-----------------------------------------|----------------------------------------|
+| GET    | `/api/boards/`                          | Retrieve all boards                    |
+| POST   | `/api/boards/`                          | Create a new board                     |
+| GET    | `/api/boards/{board_id}/`               | Retrieve a specific board              |
+| PATCH  | `/api/boards/{board_id}/`               | Update a specific board                |
+| DELETE | `/api/boards/{board_id}/`               | Delete a specific board                |
+
+### Tasks
+| Method | Endpoint                                                | Description                            |
+|--------|---------------------------------------------------------|----------------------------------------|
+| GET    | `/api/tasks/assigned-to-me/`                            | Get tasks assigned to the user         |
+| GET    | `/api/tasks/reviewing/`                                 | Get tasks the user is reviewing        |
+| POST   | `/api/tasks/`                                           | Create a new task                      |
+| PATCH  | `/api/tasks/{task_id}/`                                 | Update a specific task                 |
+| DELETE | `/api/tasks/{task_id}/`                                 | Delete a specific task                 |
+| GET    | `/api/tasks/{task_id}/comments/`                        | Get comments for a specific task       |
+| POST   | `/api/tasks/{task_id}/comments/`                        | Add a comment to a task                |
+| DELETE | `/api/tasks/{task_id}/comments/{comment_id}/`           | Delete a specific comment from a task  |
+
 
 Full endpoint details are defined in your `urls.py` or browsable via the Django REST Framework interface.
 
@@ -143,11 +144,6 @@ KannMind_Backend/
 │ └── urls.py # API routing
 ├── manage.py
 ├── requirements.txt
-└── .env # Environment variables (DO NOT commit)
-
-yaml
-Kopieren
-Bearbeiten
 
 ---
 

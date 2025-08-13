@@ -12,6 +12,7 @@ from rest_framework.permissions import IsAuthenticated
 from django.core.validators import EmailValidator
 from rest_framework.exceptions import ValidationError
 from .permissions import IsBoardMemberOrOwner,IsBoardMember,IsTaskCreatorOrBoardOwner,IsBoardMemberForTask,IsCommentAuthor
+from rest_framework.exceptions import PermissionDenied,NotFound
 
 
 
@@ -108,18 +109,40 @@ class TaskView(APIView):
     API view for creating tasks.
     Access permission: Only members of the related board.
     """
-   
+    permission_classes = [IsAuthenticated]
 
     def post(self, request, format=None):
+       
+        board_id = request.data.get('board')
+        if not board_id:
+            return Response(
+                {"detail": "400: Das Feld 'board' ist erforderlich."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+       
+        try:
+            board = Board.objects.get(pk=board_id)
+        except Board.DoesNotExist:
+            return Response(
+                {"detail": "404: Board nicht gefunden. Die angegebene Board-ID existiert nicht."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+       
+        if request.user not in board.members.all():
+            raise PermissionDenied("403: Du bist kein Mitglied dieses Boards.")
+
+       
         serializer = TaskCreateSerializer(data=request.data)
         if serializer.is_valid():
             task = serializer.save()
             response_serializer = TaskSerializer(task)
             return Response(response_serializer.data, status=status.HTTP_201_CREATED)
-        else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
         
-    permission_classes = [IsAuthenticated, IsBoardMember]
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+   
 
 
 class TasksDetailView(generics.GenericAPIView):

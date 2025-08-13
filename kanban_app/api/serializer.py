@@ -175,9 +175,11 @@ class TaskCreateSerializer(serializers.ModelSerializer):
         instance.save()
 
         if assignee is not None:
-            instance.assignee.set([assignee])
+            instance.assignee=assignee
         if reviewer is not None:
-            instance.reviewer.set([reviewer])
+            instance.reviewer=reviewer
+            
+        instance.save()
 
         return instance
 
@@ -240,6 +242,6 @@ class CommentResponseSerializer(serializers.ModelSerializer):
         model = Comment
         fields = ['id', 'created_at', 'author', 'content']
 
+    
     def get_author(self, obj):
-        """Returns the username of the comment's author."""
-        return obj.author.username
+     return f"{obj.author.first_name} {obj.author.last_name}".strip()

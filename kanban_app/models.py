@@ -32,8 +32,8 @@ class Task(models.Model):
         status (str): Current status of the task. Choices: To Do, In Progress, In Review, Finished.
         due_date (date): The due date for task completion.
         owner (User): The user who created the task.
-        assignees (ManyToMany[User]): Users assigned to work on the task.
-        reviewers (ManyToMany[User]): Users assigned to review the task.
+        assignees (ForeignKey[User]): Users assigned to work on the task.
+        reviewers (ForeignKey[User]): Users assigned to review the task.
     """
 
     PRIORITY_CHOICES = {
